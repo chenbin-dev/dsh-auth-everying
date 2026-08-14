@@ -1,0 +1,6 @@
+# Import-first OAuth routes for local coding-platform logins.
+# Does not override agent-default-model.
+
+- insert:
+    - id: llm-everything-oauth
+      name: dsh-everything-oauth
