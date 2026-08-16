@@ -19,6 +19,8 @@ export interface StoredRoute {
   configuredModel?: string
   /** CC Switch's configured reasoning effort for configuredModel. */
   modelReasoningEffort?: string
+  /** Provider-declared reasoning levels keyed by exact model id. */
+  modelReasoningEfforts?: Record<string, string[]>
   sourceId: string
   origin: string
 }
@@ -96,6 +98,15 @@ function parseDocument(text: string, filename: string): StoreDocument {
         : {},
       ...typeof route['modelReasoningEffort'] === 'string' && route['modelReasoningEffort'].length > 0
         ? { modelReasoningEffort: route['modelReasoningEffort'] }
+        : {},
+      ...isRecord(route['modelReasoningEfforts'])
+        ? {
+            modelReasoningEfforts: Object.fromEntries(Object.entries(route['modelReasoningEfforts']).flatMap(([id, efforts]) => {
+              if (!Array.isArray(efforts)) return []
+              const values = efforts.filter((effort): effort is string => typeof effort === 'string' && effort.length > 0)
+              return [[id, [...new Set(values)]]]
+            })),
+          }
         : {},
       sourceId: typeof route['sourceId'] === 'string' ? route['sourceId'] : key,
       origin: typeof route['origin'] === 'string' ? route['origin'] : 'imported',

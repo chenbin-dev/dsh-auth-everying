@@ -7,8 +7,10 @@
 - Imports local Claude, Codex, Grok, Gemini, Copilot, OpenCode, and CC Switch configuration.
 - Supports OAuth login for compatible official providers.
 - Discovers models from OpenAI-compatible CC Switch gateways through `/v1/models` or `/models`.
-- Exposes Codex `minimal`, `low`, `medium`, `high`, `xhigh`, and `max` levels for every model on a CC Switch Codex route.
-- Preserves the configured Codex `model_reasoning_effort`. CC Switch Codex routes expose `ultra` as a separate option and keep `xhigh` -> `xhigh`, `max` -> `max`, and `ultra` -> `ultra`.
+- Exposes the Codex app-compatible `low`, `medium`, `high`, `xhigh`, and `max` levels without changing their wire values. The unsupported `minimal` level is hidden for CC Switch Codex routes.
+- Uses `medium` as the concrete Codex default so DSH does not add its separate `Default` provider-default option.
+- Adds `ultra` only to models that declare or are known to support it. Non-reasoning and unsupported models do not show that selector.
+- Preserves the configured Codex `model_reasoning_effort` and sends `low`, `medium`, `high`, `xhigh`, `max`, and `ultra` with the same wire value.
 - Supports Windows installation and build workflows.
 
 ## Requirements
@@ -76,7 +78,7 @@ Open the plugin settings and run the source scan again. For a CC Switch OpenAI-c
 
 ### The reasoning levels do not match the provider
 
-For CC Switch Codex routes, every model exposes `minimal`, `low`, `medium`, `high`, `xhigh`, `max`, and `ultra`. The configured `model_reasoning_effort` is retained as provider metadata rather than incorrectly limiting the selector to one level. The wire values remain exact: `xhigh` sends `xhigh`, `max` sends `max`, and `ultra` sends `ultra`.
+For CC Switch Codex routes, the selector matches the Codex app: `low`, `medium`, `high`, `xhigh`, and `max` are available, while `minimal` is hidden. The plugin uses `medium` as the concrete default, so DSH does not add its separate `Default` entry. `ultra` is model-specific: the plugin reads optional reasoning capability metadata from the gateway and otherwise enables it only for the known GPT-5.6 Codex aliases. Models without that capability, such as image or automatic-review models, do not show `ultra`. Each selected level is sent with the same wire value.
 
 ### Windows installation or startup fails
 

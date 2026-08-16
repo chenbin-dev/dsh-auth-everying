@@ -6,11 +6,12 @@ import { ReasoningEffortId, type GenerateOptions } from '@deepseek-ai/dsh-llm'
 import type { PiAiAdapter } from '@deepseek-ai/dsh-llm-pi-ai'
 import { bestSecret } from '../src/parse-oauth.ts'
 import { fromCcSwitchConfig, isImportable, routeForDiscovered } from '../src/discover.ts'
+import { DshAuthEveryingSession } from '../src/session.ts'
 
 import { catalogModelIds, customProvider, supportsUltra } from '../src/providers.ts'
 import { CodexReasoningAdapter } from '../src/reasoning-adapter.ts'
-import type { StoredRoute } from '../src/store.ts'
-import { extractModelIds, modelListingUrls } from '../src/live-models.ts'
+import type { DshAuthEveryingStore, StoredRoute } from '../src/store.ts'
+import { extractModelIds, extractModelInfo, modelListingUrls } from '../src/live-models.ts'
 
 describe('grok catalog extras', () => {
   it('includes grok-4.6 even when pi-ai has not shipped it', () => {
@@ -89,7 +90,30 @@ describe('CC Switch Codex custom provider', () => {
 })
 
 describe('CC Switch Codex reasoning', () => {
-  it('exposes the complete Codex effort selector for the configured model', () => {
+  it('uses medium as the concrete default instead of exposing DSH Default', async () => {
+    const session = new DshAuthEveryingSession({
+      snapshot: async () => ({
+        version: 1,
+        credentials: {},
+        routes: {
+          'everything-team': {
+            route: 'everything-team',
+            displayName: 'team',
+            piProvider: 'everything-team',
+            api: 'openai-responses',
+            models: ['gpt-5.6-terra'],
+            enabled: ['gpt-5.6-terra'],
+            sourceId: 'ccswitch:codex:provider-id',
+            origin: 'CC Switch',
+          },
+        },
+      }),
+    } as unknown as DshAuthEveryingStore)
+    const profile = (await session.profiles()).get('everything-team')
+    expect(profile?.reasoning).toBe('medium')
+  })
+
+  it('exposes the Codex-compatible effort selector for the configured model', () => {
     const model = customProvider({
       route: 'everything-team',
       displayName: 'team',
@@ -106,7 +130,7 @@ describe('CC Switch Codex reasoning', () => {
     expect(model).toMatchObject({
       reasoning: true,
       thinkingLevelMap: {
-        minimal: 'minimal',
+        minimal: null,
         low: 'low',
         medium: 'medium',
         high: 'high',
@@ -133,8 +157,31 @@ describe('CC Switch Codex reasoning', () => {
     const standard = customProvider(route).getModels()[0]
     const ultra = customProvider(route, 'ultra').getModels()[0]
     expect(supportsUltra(route)).toBe(true)
+    expect(standard?.thinkingLevelMap).toMatchObject({ minimal: null, low: 'low', medium: 'medium' })
     expect(standard?.thinkingLevelMap).toMatchObject({ high: 'high', xhigh: 'xhigh', max: 'max' })
     expect(ultra?.thinkingLevelMap).toMatchObject({ high: 'high', xhigh: 'ultra', max: 'max' })
+    expect(supportsUltra(route, 'gpt-5.6-terra')).toBe(true)
+    expect(supportsUltra(route, 'gpt-5.5')).toBe(false)
+    expect(supportsUltra(route, 'gpt-image-1')).toBe(false)
+  })
+
+  it('honors per-model capability metadata when a gateway publishes it', () => {
+    const route: StoredRoute = {
+      route: 'everything-team',
+      displayName: 'team',
+      piProvider: 'everything-team',
+      api: 'openai-responses',
+      models: ['gpt-5.6-terra', 'gpt-5.5'],
+      enabled: ['gpt-5.6-terra', 'gpt-5.5'],
+      sourceId: 'ccswitch:codex:provider-id',
+      origin: 'CC Switch',
+      modelReasoningEfforts: {
+        'gpt-5.6-terra': ['high', 'ultra'],
+        'gpt-5.5': ['minimal', 'high'],
+      },
+    }
+    expect(supportsUltra(route, 'gpt-5.6-terra')).toBe(true)
+    expect(supportsUltra(route, 'gpt-5.5')).toBe(false)
   })
 
   it('exposes extended levels for discovered models too', () => {
@@ -173,7 +220,11 @@ describe('CC Switch Codex reasoning', () => {
         return (async function* () {})()
       },
     } as unknown as PiAiAdapter)
-    const adapter = new CodexReasoningAdapter(makeAdapter('standard'), makeAdapter('ultra'), new Set(['everything-team']))
+    const adapter = new CodexReasoningAdapter(
+      makeAdapter('standard'),
+      makeAdapter('ultra'),
+      new Map([['everything-team', new Set(['gpt-5.6-terra'])]]),
+    )
 
     const model = await adapter.resolveModel('everything-team', 'gpt-5.6-terra')
     expect(model.reasoning?.efforts.map(effort => effort.id)).toEqual(['high', 'ultra'])
@@ -199,6 +250,16 @@ describe('CC Switch Codex reasoning', () => {
 })
 
 describe('OpenAI-compatible model-list endpoints', () => {
+  it('reads optional reasoning efforts without requiring them', () => {
+    expect(extractModelInfo({ data: [
+      { id: 'gpt-5.6-terra', reasoning_efforts: ['high', 'ultra'] },
+      { id: 'gpt-image-1' },
+    ] })).toEqual([
+      { id: 'gpt-5.6-terra', reasoningEfforts: ['high', 'ultra'] },
+      { id: 'gpt-image-1' },
+    ])
+  })
+
   it('preserves a configured path prefix and supplies a root fallback', () => {
     expect(modelListingUrls('https://gateway.example')).toEqual([
       'https://gateway.example/v1/models',

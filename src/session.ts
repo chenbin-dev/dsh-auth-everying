@@ -1,4 +1,4 @@
-import { createModels, type MutableModels, type Provider } from '@earendil-works/pi-ai'
+import { createModels, type ModelThinkingLevel, type MutableModels, type Provider } from '@earendil-works/pi-ai'
 import { LlmError, resolveRetryPolicy } from '@deepseek-ai/dsh-llm'
 import { PiAiAdapter } from '@deepseek-ai/dsh-llm-pi-ai'
 import type { ResolvedPiAiProviderProfile } from '@deepseek-ai/dsh-llm-pi-ai'
@@ -108,15 +108,19 @@ export class DshAuthEveryingSession {
         }
       }
     }
+    let modelReasoningEfforts: Record<string, string[]> = { ...(existing?.modelReasoningEfforts ?? {}) }
     if (item.origin === 'CC Switch' && item.platform === 'codex' && item.baseURL !== undefined) {
       const token = item.credential.type === 'oauth' ? item.credential.access : item.credential.key
       if (token !== undefined) {
         try {
-          const { fetchLiveModelIds, modelListingUrls } = await import('./live-models.ts')
+          const { fetchLiveModels, modelListingUrls } = await import('./live-models.ts')
           for (const url of modelListingUrls(item.baseURL)) {
             try {
-              const live = await fetchLiveModelIds(url, token)
-              available = [...new Set([...available, ...live])]
+              const live = await fetchLiveModels(url, token)
+              available = [...new Set([...available, ...live.map(model => model.id)])]
+              for (const model of live) {
+                if (model.reasoningEfforts !== undefined) modelReasoningEfforts[model.id] = model.reasoningEfforts
+              }
               break
             } catch {
               // A few compatible gateways expose /models instead of /v1/models.
@@ -139,6 +143,7 @@ export class DshAuthEveryingSession {
       enabled,
       ...item.model === undefined ? {} : { configuredModel: item.model },
       ...item.modelReasoningEffort === undefined ? {} : { modelReasoningEffort: item.modelReasoningEffort },
+      ...Object.keys(modelReasoningEfforts).length > 0 ? { modelReasoningEfforts } : {},
       sourceId: item.id,
       origin: item.origin,
       ...item.baseURL === undefined ? {} : { baseURL: item.baseURL },
@@ -235,7 +240,7 @@ export class DshAuthEveryingSession {
     const document = await this.store.snapshot()
     const profiles = new Map<string, ResolvedPiAiProviderProfile>()
     const retryPolicy = resolveRetryPolicy(undefined, 'dsh-auth-everying retryPolicy')
-    const add = (route: string, displayName: string, provider: Provider): void => {
+    const add = (route: string, displayName: string, provider: Provider, reasoning?: ModelThinkingLevel): void => {
       profiles.set(route, {
         provider: route,
         displayName,
@@ -243,6 +248,7 @@ export class DshAuthEveryingSession {
         retryPolicy,
         configuredMaxTokens: new Map(),
         piProvider: provider,
+        ...reasoning === undefined ? {} : { reasoning },
       })
     }
     for (const route of Object.values(document.routes)) {
@@ -253,15 +259,25 @@ export class DshAuthEveryingSession {
         if (runtime !== undefined) add(route.route, route.displayName, runtime)
         continue
       }
-      add(route.route, route.displayName, customProvider(route, codexReasoningWire))
+      // Codex exposes a concrete default instead of DSH's provider-default item.
+      // All CC Switch Codex models carry medium in their explicit effort map.
+      const defaultReasoning: ModelThinkingLevel | undefined = route.sourceId.startsWith('ccswitch:codex:')
+        ? 'medium'
+        : undefined
+      add(route.route, route.displayName, customProvider(route, codexReasoningWire), defaultReasoning)
     }
     return profiles
   }
 
-  /** Return imported CC Switch Codex routes that expose the Codex `ultra` selector. */
-  async ultraRoutes(): Promise<ReadonlySet<string>> {
+  /** Return exact CC Switch Codex models that expose the Codex `ultra` selector. */
+  async ultraModels(): Promise<ReadonlyMap<string, ReadonlySet<string>>> {
     const document = await this.store.snapshot()
-    return new Set(Object.values(document.routes).filter(supportsUltra).map(route => route.route))
+    const result = new Map<string, ReadonlySet<string>>()
+    for (const route of Object.values(document.routes)) {
+      const models = new Set(route.enabled.filter(model => supportsUltra(route, model)))
+      if (models.size > 0) result.set(route.route, models)
+    }
+    return result
   }
 }
 
@@ -271,7 +287,7 @@ export function createDshAuthEveryingAdapterSync(
   cache: {
     current: Map<string, ResolvedPiAiProviderProfile>
     ultra: Map<string, ResolvedPiAiProviderProfile>
-    ultraRoutes: ReadonlySet<string>
+    ultraModels: ReadonlyMap<string, ReadonlySet<string>>
   },
 ): CodexReasoningAdapter {
   const common = {
@@ -283,7 +299,7 @@ export function createDshAuthEveryingAdapterSync(
     ...common,
   })
   const ultra = new PiAiAdapter({ profiles: () => cache.ultra, ...common })
-  return new CodexReasoningAdapter(standard, ultra, cache.ultraRoutes)
+  return new CodexReasoningAdapter(standard, ultra, cache.ultraModels)
 }
 
 export { authEveryingPath }

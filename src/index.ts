@@ -23,7 +23,7 @@ export function apply(ctx: Context, _config: Config): void {
   const cache: Parameters<typeof createDshAuthEveryingAdapterSync>[2] = {
     current: new Map(),
     ultra: new Map(),
-    ultraRoutes: new Set<string>(),
+    ultraModels: new Map(),
   }
   let session!: DshAuthEveryingSession
   let adapter!: ReturnType<typeof createDshAuthEveryingAdapterSync>
@@ -31,7 +31,7 @@ export function apply(ctx: Context, _config: Config): void {
   const reconcile = async (): Promise<void> => {
     cache.current = await session.profiles()
     cache.ultra = await session.profiles('ultra')
-    cache.ultraRoutes = await session.ultraRoutes()
+    cache.ultraModels = await session.ultraModels()
     const routes = [...cache.current.keys()]
     if (handle === undefined && routes.length > 0) {
       handle = ctx.llm.registerAdapter(routes, adapter)

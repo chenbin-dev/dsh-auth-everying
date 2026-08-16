@@ -76,8 +76,14 @@ export function catalogProvider(id: OfficialPlatformId): Provider | undefined {
 export type CodexReasoningWire = 'standard' | 'ultra'
 
 /** Treat an imported CC Switch Codex route as the route that owns the Codex effort dialect. */
-export function supportsUltra(route: StoredRoute): boolean {
-  return isCcSwitchCodex(route)
+export function supportsUltra(route: StoredRoute, model?: string): boolean {
+  if (!isCcSwitchCodex(route)) return false
+  if (model === undefined) return route.enabled.some(id => supportsUltra(route, id))
+  const declared = route.modelReasoningEfforts?.[model]
+  if (declared !== undefined) return declared.some(effort => effort.trim().toLowerCase() === 'ultra')
+  // The current Codex gateway does not publish capabilities in /models. Keep
+  // the known GPT-5.6 reasoning aliases usable while excluding unrelated ids.
+  return /^gpt-5\.6-(?:sol|luna|terra)$/i.test(model)
 }
 
 /** Mirror CC Switch's configured effort without changing the wire spelling of other levels. */
@@ -94,7 +100,9 @@ function configuredReasoning(
       reasoning: true,
       thinkingLevelMap: {
         off: null,
-        minimal: 'minimal',
+        // DSH's Codex selector follows the Codex app and does not expose Minimal.
+        // An explicit null is required because pi-ai treats omitted levels as supported.
+        minimal: null,
         low: 'low',
         medium: 'medium',
         high: 'high',

@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file.
 
 Package name: `dsh-auth-everying`.
 
+## Unreleased
+
+### Fixed
+
+- Restrict the `ultra` selector to exact models instead of exposing it to every model on a CC Switch Codex route.
+- Hide `minimal` from CC Switch Codex routes so the selector matches the Codex app's available levels.
+- Set `medium` as the concrete Codex default so DSH does not show its separate `Default` option.
+- Read optional per-model reasoning capability metadata from OpenAI-compatible model listings.
+- Keep unsupported models out of the `ultra` selector while preserving exact `xhigh` and `max` request values.
+
 ## 0.1.4 - 2026-08-16
 
 ### Fixed

@@ -59,6 +59,8 @@ interface StoredRoute {
   configuredModel?: string;
   /** CC Switch's configured reasoning effort for configuredModel. */
   modelReasoningEffort?: string;
+  /** Provider-declared reasoning levels keyed by exact model id. */
+  modelReasoningEfforts?: Record<string, string[]>;
   sourceId: string;
   origin: string;
 }
@@ -122,8 +124,8 @@ declare class DshAuthEveryingSession {
   logout(id?: string): Promise<void>;
   resolveAccess(route: string): Promise<string>;
   profiles(codexReasoningWire?: 'standard' | 'ultra'): Promise<Map<string, ResolvedPiAiProviderProfile>>;
-  /** Return imported CC Switch Codex routes that expose the Codex `ultra` selector. */
-  ultraRoutes(): Promise<ReadonlySet<string>>;
+  /** Return exact CC Switch Codex models that expose the Codex `ultra` selector. */
+  ultraModels(): Promise<ReadonlyMap<string, ReadonlySet<string>>>;
 }
 //#endregion
 //#region src/auth.d.ts

@@ -9,7 +9,7 @@ export class CodexReasoningAdapter extends LlmAdapter {
   constructor(
     private readonly standard: PiAiAdapter,
     private readonly ultra: PiAiAdapter,
-    private readonly ultraRoutes: ReadonlySet<string>,
+    private readonly ultraModels: ReadonlyMap<string, ReadonlySet<string>>,
   ) {
     super()
   }
@@ -29,7 +29,7 @@ export class CodexReasoningAdapter extends LlmAdapter {
   async resolveModel(provider: string, model: string, signal?: AbortSignal): Promise<LlmResolvedModelInfo> {
     const resolved = await this.standard.resolveModel(provider, model, signal)
     const reasoning = resolved.reasoning
-    if (!this.ultraRoutes.has(provider) || reasoning === undefined) return resolved
+    if (!this.ultraModels.get(provider)?.has(model) || reasoning === undefined) return resolved
     if (reasoning.efforts.some(effort => effort.id === ULTRA)) return resolved
     return {
       ...resolved,
@@ -43,7 +43,7 @@ export class CodexReasoningAdapter extends LlmAdapter {
   /** Route `ultra` through a model descriptor whose xhigh slot sends the ultra wire value. */
   stream(options: GenerateOptions): AsyncIterable<StreamChunk> {
     if (options.reasoningEffort !== ULTRA) return this.standard.stream(options)
-    if (!this.ultraRoutes.has(options.provider)) {
+    if (!this.ultraModels.get(options.provider)?.has(options.model)) {
       throw new LlmError(
         `provider "${options.provider}" model "${options.model}" does not support reasoning effort "ultra"`,
         'UNSUPPORTED_REASONING_EFFORT',
