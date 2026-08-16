@@ -1,45 +1,91 @@
-# dsh-everything-oauth
+# dsh-auth-everying
 
-Import local coding-platform logins into [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) without signing in again.
+`dsh-auth-everying` is a DeepSeek Harness plugin for importing local coding-platform login state and provider configuration. It lets you choose which imported models appear in the DSH model picker.
 
-Scans the same places [CC Switch](https://github.com/farion1231/cc-switch) cares about:
+## Features
 
-| Source | What is imported |
-| --- | --- |
-| `~/.cc-switch/cc-switch.db` | Claude / Codex / Gemini / OpenCode providers (DeepSeek, Kimi, official, …) |
-| `~/.claude/settings.json` | `ANTHROPIC_API_KEY` / `ANTHROPIC_AUTH_TOKEN` |
-| macOS Keychain `Claude Code-credentials` | Claude subscription OAuth |
-| `~/.codex/auth.json` | ChatGPT / Codex OAuth or `OPENAI_API_KEY` |
-| `~/.grok/auth.json` + `config.toml` | SuperGrok OAuth and custom model keys |
-| `~/.config/opencode/opencode.json` | OpenCode providers |
-| `~/.gemini/.env` | `GEMINI_API_KEY` |
-| process env | `ANTHROPIC_*`, `OPENAI_API_KEY`, `XAI_API_KEY`, `GEMINI_API_KEY` |
+- Imports local Claude, Codex, Grok, Gemini, Copilot, OpenCode, and CC Switch configuration.
+- Supports OAuth login for compatible official providers.
+- Discovers models from OpenAI-compatible CC Switch gateways through `/v1/models` or `/models`.
+- Preserves the configured Codex `model_reasoning_effort`. DSH displays Codex `ultra` as `xhigh` while sending `ultra` to the gateway.
+- Supports Windows installation and build workflows.
 
-Official routes: `claude-oauth`, `codex-oauth`, `grok-oauth`, `gemini-oauth`, `copilot-oauth`. CC Switch gateways become `everything-*` custom routes (Anthropic-compatible or OpenAI-compatible).
+## Requirements
 
-## Install
+- A working DeepSeek Harness installation with the `dsh` command available in PowerShell or a terminal.
+- A web profile, because the settings panel is provided by the DSH web interface.
+- Node.js 22.19 or later only when building the project from source.
+
+## Install From GitHub
+
+Run these commands in PowerShell or a terminal:
 
 ```sh
-dsh plugin --profile web add github:kam74515-boop/dsh-everything-oauth
+dsh plugin --profile web add github:chenbin-dev/dsh-auth-everying
 dsh web
 ```
 
-Then **Settings → Everything OAuth**:
+If DSH is already running, restart `dsh web` after installing or updating the plugin so the new bundle is loaded.
 
-1. **Sources** — select local logins / keys
-2. **Imported** — enable only the models you want in the picker
+## First-Time Setup
 
-CLI:
+1. Open the DSH web interface and go to **Settings > dsh-auth-everying**.
+2. In **Sources**, select the local login or provider configuration to import.
+3. Click the import action and wait for the scan to finish.
+4. In **Imported**, enable the models that should be available in DSH.
+5. Start a new conversation or refresh the model picker.
+
+The plugin reads local configuration from common locations, including CC Switch, Codex, Claude, Grok, Gemini, and OpenCode. It does not require copying API keys into the project or into the README.
+
+## CLI
+
+Show available sources and imported routes:
 
 ```sh
-dsh plugin --profile web exec dsh-everything-oauth status
-dsh plugin --profile web exec dsh-everything-oauth import live:codex-auth live:grok-auth
+dsh plugin --profile web exec dsh-auth-everying status
 ```
 
-Source files are read-only. OAuth refresh later may rotate tokens and sign the original CLI out.
+Import sources by ID after checking `status`:
 
-Discoverable via the GitHub [`dsh-plugin`](https://github.com/topics/dsh-plugin) topic.
+```sh
+dsh plugin --profile web exec dsh-auth-everying import live:codex-auth live:grok-auth
+```
+
+Use the source IDs reported by `status` when your local installation exposes different IDs.
+
+## Troubleshooting
+
+### The plugin does not appear in Settings
+
+Confirm that the install command completed successfully, stop the existing `dsh web` process, and start it again. Also verify that the command uses the `web` profile.
+
+### The imported route has no models
+
+Open the plugin settings and run the source scan again. For a CC Switch OpenAI-compatible provider, confirm that its gateway is reachable and supports either `/v1/models` or `/models`. The configured default model is retained when the gateway does not provide a model list.
+
+### The reasoning levels do not match the provider
+
+For a configured Codex model, the plugin uses the value in `model_reasoning_effort`. Only the declared level is exposed. Codex `ultra` is represented as DSH `xhigh` and remains `ultra` in the gateway request.
+
+### Windows installation or startup fails
+
+Use Node.js 22.19 or later for source builds, restart DSH after installation, and ensure the `dsh` command is available in the same terminal where the plugin command is run.
+
+## Development
+
+```sh
+git clone https://github.com/chenbin-dev/dsh-auth-everying.git
+cd dsh-auth-everying
+npm ci
+npm run check
+```
+
+`npm run check` runs TypeScript checks, tests, and the production build.
+
+Do not commit authentication files, local databases, API keys, tokens, certificates, or `.env` files. Test fixtures must use placeholder credentials only.
 
 ## License
 
-Apache-2.0
+Apache-2.0. See [LICENSE](LICENSE).
+
+Project repository: <https://github.com/chenbin-dev/dsh-auth-everying>

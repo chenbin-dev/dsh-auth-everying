@@ -3,10 +3,10 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { bestSecret } from '../src/parse-oauth.ts'
-import { routeForDiscovered } from '../src/discover.ts'
+import { fromCcSwitchConfig, isImportable, routeForDiscovered } from '../src/discover.ts'
 
-import { catalogModelIds } from '../src/providers.ts'
-import { extractModelIds } from '../src/live-models.ts'
+import { catalogModelIds, customProvider } from '../src/providers.ts'
+import { extractModelIds, modelListingUrls } from '../src/live-models.ts'
 
 describe('grok catalog extras', () => {
   it('includes grok-4.6 even when pi-ai has not shipped it', () => {
@@ -51,8 +51,87 @@ describe('routeForDiscovered', () => {
       importable: true,
       baseURL: 'https://api.deepseek.com',
     })
-    expect(route.startsWith('everything-')).toBe(true)
+    expect(route.startsWith('auth-everying-')).toBe(true)
     expect(route).toContain('deepseek')
+  })
+})
+
+describe('CC Switch Codex custom provider', () => {
+  it('reads the TOML gateway configuration and Responses wire API', () => {
+    const source = fromCcSwitchConfig('provider-id', 'codex', 'team', JSON.stringify({
+      auth: { OPENAI_API_KEY: 'test-key' },
+      config: [
+        'model_provider = "custom"',
+        'model = "gpt-5.6-terra"',
+        'model_reasoning_effort = "high"',
+        '',
+        '[model_providers.custom]',
+        'base_url = "https://gateway.example"',
+        'wire_api = "responses"',
+      ].join('\n'),
+    }))
+
+    expect(source).toMatchObject({
+      id: 'ccswitch:codex:provider-id',
+      platform: 'codex',
+      baseURL: 'https://gateway.example',
+      model: 'gpt-5.6-terra',
+      models: ['gpt-5.6-terra'],
+      modelReasoningEffort: 'high',
+      api: 'openai-responses',
+    })
+    expect(source !== undefined && isImportable(source)).toBe(true)
+  })
+})
+
+describe('CC Switch configured reasoning', () => {
+  it('restricts the configured model to its declared effort', () => {
+    const model = customProvider({
+      route: 'everything-team',
+      displayName: 'team',
+      piProvider: 'everything-team',
+      api: 'openai-responses',
+      baseURL: 'https://gateway.example',
+      models: ['gpt-5.6-terra'],
+      enabled: ['gpt-5.6-terra'],
+      configuredModel: 'gpt-5.6-terra',
+      modelReasoningEffort: 'high',
+      sourceId: 'ccswitch:codex:provider-id',
+      origin: 'CC Switch',
+    }).getModels()[0]
+    expect(model).toMatchObject({
+      reasoning: true,
+      thinkingLevelMap: { low: null, medium: null, high: 'high', xhigh: null, max: null },
+    })
+  })
+
+  it('uses DSH xhigh for Codex ultra while preserving the gateway value', () => {
+    const model = customProvider({
+      route: 'everything-team',
+      displayName: 'team',
+      piProvider: 'everything-team',
+      api: 'openai-responses',
+      baseURL: 'https://gateway.example',
+      models: ['gpt-5.6-terra'],
+      enabled: ['gpt-5.6-terra'],
+      configuredModel: 'gpt-5.6-terra',
+      modelReasoningEffort: 'ultra',
+      sourceId: 'ccswitch:codex:provider-id',
+      origin: 'CC Switch',
+    }).getModels()[0]
+    expect(model?.thinkingLevelMap).toMatchObject({ high: null, xhigh: 'ultra', max: null })
+  })
+})
+
+describe('OpenAI-compatible model-list endpoints', () => {
+  it('preserves a configured path prefix and supplies a root fallback', () => {
+    expect(modelListingUrls('https://gateway.example')).toEqual([
+      'https://gateway.example/v1/models',
+      'https://gateway.example/models',
+    ])
+    expect(modelListingUrls('https://gateway.example/openai/v1')).toEqual([
+      'https://gateway.example/openai/v1/models',
+    ])
   })
 })
 

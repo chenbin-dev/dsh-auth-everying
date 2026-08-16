@@ -7,7 +7,7 @@ import type { AuthEvent, AuthPrompt } from '@earendil-works/pi-ai'
 import { officialById } from './ids.ts'
 import { loginSession } from './auth.ts'
 import { safeMessage } from './redact.ts'
-import { EverythingOAuthSession, everythingOAuthPath } from './session.ts'
+import { DshAuthEveryingSession, authEveryingPath } from './session.ts'
 
 function openBrowser(rawUrl: string): void {
   const url = new URL(rawUrl)
@@ -37,7 +37,7 @@ function notify(event: AuthEvent): void {
 
 function printHelp(): void {
   process.stdout.write([
-    'Usage: dsh-everything-oauth <status|import|login|logout> [id]',
+    'Usage: dsh-auth-everying <status|import|login|logout> [id]',
     '',
     '  status           list official platforms and discovered local keys (no secrets)',
     '  import <id...>   import only the source ids you pass',
@@ -53,12 +53,12 @@ export async function run(argv: readonly string[]): Promise<number> {
     return 0
   }
   const [action, id] = argv
-  const session = new EverythingOAuthSession()
+  const session = new DshAuthEveryingSession()
   try {
     switch (action) {
       case 'status': {
         const status = await session.status()
-        process.stdout.write(`store: ${everythingOAuthPath()}\n`)
+        process.stdout.write(`store: ${authEveryingPath()}\n`)
         for (const platform of status.platforms) {
           process.stdout.write(`${platform.signedIn ? 'in ' : 'out'}  ${platform.displayName}  ${platform.route}\n`)
         }
@@ -71,7 +71,7 @@ export async function run(argv: readonly string[]): Promise<number> {
       case 'import': {
         const ids = argv.slice(1)
         if (ids.length === 0) {
-          process.stderr.write('dsh-everything-oauth: pass source ids from status, e.g. import live:codex-auth\n')
+          process.stderr.write('dsh-auth-everying: pass source ids from status, e.g. import live:codex-auth\n')
           return 1
         }
         const imported = await session.importMany(ids)
@@ -87,7 +87,7 @@ export async function run(argv: readonly string[]): Promise<number> {
       case 'login': {
         const platform = id === undefined ? undefined : officialById(id)
         if (platform === undefined || !platform.canLogin) {
-          process.stderr.write('dsh-everything-oauth: login requires claude, codex, grok, or copilot\n')
+          process.stderr.write('dsh-auth-everying: login requires claude, codex, grok, or copilot\n')
           return 1
         }
         const readline = createInterface({ input: process.stdin, output: process.stdout })
@@ -108,11 +108,11 @@ export async function run(argv: readonly string[]): Promise<number> {
         return 0
       }
       default:
-        process.stderr.write(`dsh-everything-oauth: unknown command ${JSON.stringify(action)}\n`)
+        process.stderr.write(`dsh-auth-everying: unknown command ${JSON.stringify(action)}\n`)
         return 1
     }
   } catch (error: unknown) {
-    process.stderr.write(`dsh-everything-oauth: ${safeMessage(error)}\n`)
+    process.stderr.write(`dsh-auth-everying: ${safeMessage(error)}\n`)
     return 1
   }
 }

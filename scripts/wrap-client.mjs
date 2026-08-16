@@ -22,7 +22,7 @@ if (source.includes('window.__ModuleLoader__')) {
 }
 
 writeFileSync(out, `window.__ModuleLoader__.load({
-	id: "dsh-everything-oauth",
+	id: "dsh-auth-everying",
 	factory: (require) => {
 		var module = { exports: {} };
 		var exports = module.exports;

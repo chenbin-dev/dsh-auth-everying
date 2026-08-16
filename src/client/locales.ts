@@ -1,6 +1,6 @@
 export const en = {
-  nav: 'Everything OAuth',
-  title: 'Everything OAuth',
+  nav: 'dsh-auth-everying',
+  title: 'dsh-auth-everying',
   intro: 'Import local logins, then enable only the models you want in the picker.',
   tabConfig: 'Imported',
   tabSources: 'Sources',
@@ -26,11 +26,11 @@ export const en = {
   enabledCount: '{n} enabled',
 }
 
-export type EverythingOAuthKey = keyof typeof en
+export type DshAuthEveryingKey = keyof typeof en
 
-export const zh: { [Key in EverythingOAuthKey]: string } = {
-  nav: 'Everything OAuth',
-  title: 'Everything OAuth',
+export const zh: { [Key in DshAuthEveryingKey]: string } = {
+  nav: 'dsh-auth-everying',
+  title: 'dsh-auth-everying',
   intro: '先导入本机登录态，再勾选要出现在模型选择器里的模型。未导入、未启用的不会出现。',
   tabConfig: '导入配置',
   tabSources: '来源列表',

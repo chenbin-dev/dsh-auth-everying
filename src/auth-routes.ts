@@ -14,7 +14,7 @@ import {
 } from './ids.ts'
 import { loginSession } from './auth.ts'
 import { safeMessage } from './redact.ts'
-import type { EverythingOAuthSession } from './session.ts'
+import type { DshAuthEveryingSession } from './session.ts'
 
 interface LoginChallenge {
   url: string
@@ -70,7 +70,7 @@ class LoginRunner {
   private challenge: LoginChallenge | undefined
   private waiters: Array<{ resolve(value: LoginChallenge): void; reject(error: unknown): void }> = []
 
-  constructor(private readonly session: EverythingOAuthSession) {}
+  constructor(private readonly session: DshAuthEveryingSession) {}
 
   async start(id: OfficialPlatformId): Promise<LoginChallenge> {
     if (this.operation !== undefined && this.challenge !== undefined) return this.challenge
@@ -118,7 +118,7 @@ class LoginRunner {
   }
 }
 
-export function registerAuthRoutes(ctx: Context, session: EverythingOAuthSession): void {
+export function registerAuthRoutes(ctx: Context, session: DshAuthEveryingSession): void {
   const logins = new LoginRunner(session)
   ctx.effect(() => {
     const routes = [
@@ -222,5 +222,5 @@ export function registerAuthRoutes(ctx: Context, session: EverythingOAuthSession
     return () => {
       for (const dispose of routes) dispose()
     }
-  }, 'dsh-everything-oauth: web routes')
+  }, 'dsh-auth-everying: web routes')
 }

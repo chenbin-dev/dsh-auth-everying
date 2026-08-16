@@ -2,12 +2,12 @@ import { mkdtemp } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { EverythingOAuthStore } from '../src/store.ts'
+import { DshAuthEveryingStore } from '../src/store.ts'
 
-describe('EverythingOAuthStore', () => {
+describe('DshAuthEveryingStore', () => {
   it('round-trips oauth and api key credentials', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'dsh-eo-store-'))
-    const store = new EverythingOAuthStore(join(dir, 'auth.json'))
+    const store = new DshAuthEveryingStore(join(dir, 'auth.json'))
     await store.putRoute({
       route: 'codex-oauth',
       displayName: 'Codex',

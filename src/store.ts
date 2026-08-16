@@ -15,6 +15,10 @@ export interface StoredRoute {
   models: string[]
   /** Models the user turned on for the composer picker. */
   enabled: string[]
+  /** CC Switch's explicitly configured model, when one is available. */
+  configuredModel?: string
+  /** CC Switch's configured reasoning effort for configuredModel. */
+  modelReasoningEffort?: string
   sourceId: string
   origin: string
 }
@@ -42,7 +46,7 @@ async function assertOwnerOnly(filename: string): Promise<void> {
   if (process.platform === 'win32') return
   if ((mode & 0o077) !== 0) {
     throw new Error(
-      `everything-oauth: ${filename} is readable beyond its owner (mode ${(mode & 0o777).toString(8)}); run chmod 600`,
+      `dsh-auth-everying: ${filename} is readable beyond its owner (mode ${(mode & 0o777).toString(8)}); run chmod 600`,
     )
   }
 }
@@ -62,11 +66,11 @@ function parseDocument(text: string, filename: string): StoreDocument {
   try {
     value = JSON.parse(text) as unknown
   } catch {
-    throw new Error(`everything-oauth: ${filename} is not valid JSON`)
+    throw new Error(`dsh-auth-everying: ${filename} is not valid JSON`)
   }
-  if (typeof value !== 'object' || value === null) throw new Error(`everything-oauth: ${filename} must be an object`)
+  if (typeof value !== 'object' || value === null) throw new Error(`dsh-auth-everying: ${filename} must be an object`)
   const document = value as Record<string, unknown>
-  if (document['version'] !== 1) throw new Error(`everything-oauth: unsupported store version`)
+  if (document['version'] !== 1) throw new Error(`dsh-auth-everying: unsupported store version`)
   const credentials = isRecord(document['credentials']) ? document['credentials'] : {}
   const routes = isRecord(document['routes']) ? document['routes'] : {}
   const parsedCreds: Record<string, Credential> = {}
@@ -87,6 +91,12 @@ function parseDocument(text: string, filename: string): StoreDocument {
       enabled: Array.isArray(route['enabled'])
         ? route['enabled'].filter((id): id is string => typeof id === 'string')
         : [],
+      ...typeof route['configuredModel'] === 'string' && route['configuredModel'].length > 0
+        ? { configuredModel: route['configuredModel'] }
+        : {},
+      ...typeof route['modelReasoningEffort'] === 'string' && route['modelReasoningEffort'].length > 0
+        ? { modelReasoningEffort: route['modelReasoningEffort'] }
+        : {},
       sourceId: typeof route['sourceId'] === 'string' ? route['sourceId'] : key,
       origin: typeof route['origin'] === 'string' ? route['origin'] : 'imported',
       ...typeof route['baseURL'] === 'string' ? { baseURL: route['baseURL'] } : {},
@@ -99,14 +109,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-export function everythingOAuthPath(dshHome?: string): string {
+export function authEveryingPath(dshHome?: string): string {
   return resolve(join(resolveDshHome(dshHome), STORE_FILENAME))
 }
 
-export class EverythingOAuthStore implements CredentialStore {
+export class DshAuthEveryingStore implements CredentialStore {
   readonly filename: string
 
-  constructor(filename: string = everythingOAuthPath()) {
+  constructor(filename: string = authEveryingPath()) {
     this.filename = resolve(filename)
   }
 

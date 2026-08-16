@@ -1,5 +1,17 @@
 node_modules
+.npm-cache
 coverage
 .DS_Store
 *.tsbuildinfo
 .vitest
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.sqlite
+*.sqlite3
+*.db
+.everything-oauth.json
+npm-debug.log*

@@ -29,6 +29,8 @@ export interface DiscoveredSource {
   baseHost?: string
   model?: string
   models?: string[]
+  /** Configured default effort for the source's selected model. */
+  modelReasoningEffort?: string
   api?: WireApi
   envKey?: string
 }
@@ -368,7 +370,8 @@ function ccSwitchPlatform(appType: string): OfficialPlatformId | 'custom' {
   return 'custom'
 }
 
-function fromCcSwitchConfig(
+/** Parse a CC Switch provider row while retaining its configured gateway semantics. */
+export function fromCcSwitchConfig(
   id: string,
   appType: string,
   name: string,
@@ -382,10 +385,13 @@ function fromCcSwitchConfig(
   }
   const env = isRecord(config) && isRecord(config['env']) ? config['env'] : {}
   const auth = isRecord(config) && isRecord(config['auth']) ? config['auth'] : {}
+  const toml = isRecord(config) && typeof config['config'] === 'string'
+    ? parseSimpleToml(config['config'])
+    : {}
   const platform = ccSwitchPlatform(appType)
   const official = officialById(platform === 'custom' ? '' : platform)
   const anthropicKey = nonEmptyString(env['ANTHROPIC_API_KEY']) ?? nonEmptyString(env['ANTHROPIC_AUTH_TOKEN'])
-  const openaiKey = nonEmptyString(auth['OPENAI_API_KEY'])
+  const openaiKey = nonEmptyString(auth['OPENAI_API_KEY']) ?? nonEmptyString(env['OPENAI_API_KEY'])
   const geminiKey = nonEmptyString(env['GEMINI_API_KEY'])
   const secret = bestSecret({ env, auth, config }, [appType, name, platform])
   const credential = anthropicKey !== undefined
@@ -395,15 +401,26 @@ function fromCcSwitchConfig(
       : geminiKey !== undefined
         ? apiKeyCredential(geminiKey)
         : secret?.credential
+  const providerName = nonEmptyString(toml['model_provider'])
+  const provider = providerName === undefined || !isRecord(toml['model_providers'])
+    ? {}
+    : isRecord(toml['model_providers'][providerName])
+      ? toml['model_providers'][providerName]
+      : {}
+  const wireApi = nonEmptyString(provider['wire_api'])
+  const modelReasoningEffort = nonEmptyString(toml['model_reasoning_effort'])
   const models = [
     nonEmptyString(env['ANTHROPIC_MODEL']),
     nonEmptyString(env['ANTHROPIC_DEFAULT_SONNET_MODEL']),
     nonEmptyString(env['ANTHROPIC_DEFAULT_OPUS_MODEL']),
     nonEmptyString(env['ANTHROPIC_DEFAULT_HAIKU_MODEL']),
+    nonEmptyString(toml['model']),
   ].filter((item): item is string => item !== undefined)
   const baseURL = nonEmptyString(env['ANTHROPIC_BASE_URL'])
     ?? nonEmptyString(env['OPENAI_BASE_URL'])
     ?? nonEmptyString(env['GEMINI_BASE_URL'])
+    ?? nonEmptyString(provider['base_url'])
+    ?? nonEmptyString(toml['base_url'])
   return source({
     id: `ccswitch:${appType}:${id}`,
     platform,
@@ -414,7 +431,10 @@ function fromCcSwitchConfig(
     baseURL,
     models,
     model: models[0],
-    api: anthropicKey !== undefined || baseURL !== undefined && platform === 'claude'
+    ...modelReasoningEffort === undefined ? {} : { modelReasoningEffort },
+    api: wireApi === 'responses'
+      ? 'openai-responses'
+      : anthropicKey !== undefined || baseURL !== undefined && platform === 'claude'
       ? 'anthropic-messages'
       : official?.id === 'codex' && credential?.type === 'oauth'
         ? 'openai-codex-responses'
@@ -518,7 +538,7 @@ export function routeForDiscovered(item: DiscoveredSource): string {
       if (!(item.origin === 'CC Switch' && item.baseURL !== undefined)) return official.route
     }
   }
-  return `everything-${slugify(`${item.origin}-${item.displayName}`)}`
+  return `auth-everying-${slugify(`${item.origin}-${item.displayName}`)}`
 }
 
 export function oauthCredential(item: ImportableSource): OAuthCredential | undefined {

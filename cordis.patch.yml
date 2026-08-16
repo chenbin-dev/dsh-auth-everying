@@ -2,5 +2,5 @@
 # Does not override agent-default-model.
 
 - insert:
-    - id: llm-everything-oauth
-      name: dsh-everything-oauth
+    - id: llm-dsh-auth-everying
+      name: dsh-auth-everying

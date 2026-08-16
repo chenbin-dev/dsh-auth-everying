@@ -2,13 +2,13 @@ import { createModels } from '@earendil-works/pi-ai'
 import type { AuthInteraction } from '@earendil-works/pi-ai'
 import { catalogProvider } from './providers.ts'
 import { officialById, type OfficialPlatformId } from './ids.ts'
-import { EverythingOAuthStore } from './store.ts'
-import type { EverythingOAuthSession } from './session.ts'
+import { DshAuthEveryingStore } from './store.ts'
+import type { DshAuthEveryingSession } from './session.ts'
 
 export async function loginOfficial(
   id: OfficialPlatformId,
   interaction: AuthInteraction,
-  store: EverythingOAuthStore = new EverythingOAuthStore(),
+  store: DshAuthEveryingStore = new DshAuthEveryingStore(),
 ): Promise<void> {
   const platform = officialById(id)
   const provider = catalogProvider(id)
@@ -21,7 +21,7 @@ export async function loginOfficial(
 }
 
 export async function loginSession(
-  session: EverythingOAuthSession,
+  session: DshAuthEveryingSession,
   id: OfficialPlatformId,
   interaction: AuthInteraction,
 ): Promise<void> {

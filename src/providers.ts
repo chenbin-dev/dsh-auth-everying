@@ -1,4 +1,4 @@
-import { createProvider, type Api, type Model, type Provider } from '@earendil-works/pi-ai'
+import { createProvider, type Api, type Model, type Provider, type ThinkingLevelMap } from '@earendil-works/pi-ai'
 import { anthropicProvider } from '@earendil-works/pi-ai/providers/anthropic'
 import { githubCopilotProvider } from '@earendil-works/pi-ai/providers/github-copilot'
 import { googleProvider } from '@earendil-works/pi-ai/providers/google'
@@ -18,6 +18,8 @@ import {
 import type { StoredRoute } from './store.ts'
 
 const ZERO_COST = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }
+const THINKING_LEVELS = ['minimal', 'low', 'medium', 'high', 'xhigh', 'max'] as const
+type ThinkingLevel = typeof THINKING_LEVELS[number]
 
 function bearerOf(credential: { type?: string; key?: string; access?: string } | undefined): string | undefined {
   if (credential === undefined) return undefined
@@ -67,6 +69,22 @@ export function catalogProvider(id: OfficialPlatformId): Provider | undefined {
   }
 }
 
+/** Mirror CC Switch's configured effort for its selected model without guessing other models' capabilities. */
+function configuredReasoning(route: StoredRoute, id: string): Pick<Model<WireApi>, 'reasoning' | 'thinkingLevelMap'> {
+  if (route.configuredModel !== id || route.modelReasoningEffort === undefined) return { reasoning: true }
+  const effort = route.modelReasoningEffort.trim().toLowerCase()
+  if (effort === 'off' || effort === 'none' || effort === 'disabled') return { reasoning: false }
+  const level: ThinkingLevel | undefined = effort === 'ultra'
+    ? 'xhigh'
+    : THINKING_LEVELS.includes(effort as ThinkingLevel)
+      ? effort as ThinkingLevel
+      : undefined
+  if (level === undefined) return { reasoning: true }
+  const thinkingLevelMap: ThinkingLevelMap = { off: null }
+  for (const candidate of THINKING_LEVELS) thinkingLevelMap[candidate] = candidate === level ? effort : null
+  return { reasoning: true, thinkingLevelMap }
+}
+
 function materializeModel(route: StoredRoute, id: string): Model<WireApi> {
   return {
     id,
@@ -74,7 +92,7 @@ function materializeModel(route: StoredRoute, id: string): Model<WireApi> {
     api: route.api,
     provider: route.route,
     baseUrl: route.baseURL ?? 'https://example.invalid/v1',
-    reasoning: true,
+    ...configuredReasoning(route, id),
     input: ['text', 'image'],
     cost: ZERO_COST,
     contextWindow: DEFAULT_CONTEXT_WINDOW,

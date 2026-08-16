@@ -2,6 +2,27 @@ import { isRecord } from './parse-oauth.ts'
 
 const BODY_LIMIT = 4 * 1024 * 1024
 
+/** Build conventional model-list endpoints without dropping a gateway path prefix. */
+export function modelListingUrls(baseURL: string): string[] {
+  try {
+    const base = new URL(baseURL)
+    base.search = ''
+    base.hash = ''
+    const path = base.pathname.replace(/\/+$/, '')
+    const paths = [
+      `${path.endsWith('/v1') ? path : `${path}/v1`}/models`,
+      `${path}/models`,
+    ]
+    return [...new Set(paths.map(pathname => {
+      const target = new URL(base)
+      target.pathname = pathname.startsWith('/') ? pathname : `/${pathname}`
+      return target.toString()
+    }))]
+  } catch {
+    return []
+  }
+}
+
 /** Pull model ids from an OpenAI-shaped listing. Never returns the body. */
 export function extractModelIds(body: unknown): string[] {
   const rows = Array.isArray(body)

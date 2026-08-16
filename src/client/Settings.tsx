@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { CSSProperties, KeyboardEvent } from 'react'
-import type { EverythingOAuthKey } from './locales.ts'
+import type { DshAuthEveryingKey } from './locales.ts'
 
-const STATUS = '/plugins/dsh-everything-oauth/auth/status'
-const IMPORT = '/plugins/dsh-everything-oauth/auth/import'
-const MODELS = '/plugins/dsh-everything-oauth/auth/models'
-const LOGOUT = '/plugins/dsh-everything-oauth/auth/logout'
-const CSS_ID = 'dsh-everything-oauth/settings.css'
+const STATUS = '/plugins/dsh-auth-everying/auth/status'
+const IMPORT = '/plugins/dsh-auth-everying/auth/import'
+const MODELS = '/plugins/dsh-auth-everying/auth/models'
+const LOGOUT = '/plugins/dsh-auth-everying/auth/logout'
+const CSS_ID = 'dsh-auth-everying/settings.css'
 
 const css = `
 .eo_section{max-width:760px;color:var(--dsw-alias-label-primary);flex-direction:column;gap:12px;display:flex}
@@ -52,7 +52,7 @@ function ensureCss(): void {
   if (typeof document === 'undefined') return
   if (document.querySelector(`style[data-plugin-css=${JSON.stringify(CSS_ID)}]`)) return
   const tag = document.createElement('style')
-  tag.dataset.plugin = 'dsh-everything-oauth'
+  tag.dataset.plugin = 'dsh-auth-everying'
   tag.dataset.pluginCss = CSS_ID
   tag.textContent = css
   document.head.appendChild(tag)
@@ -84,7 +84,7 @@ interface StatusPayload {
 }
 
 export interface SettingsInjected {
-  t: (key: EverythingOAuthKey, params?: Record<string, unknown>) => string
+  t: (key: DshAuthEveryingKey, params?: Record<string, unknown>) => string
 }
 
 type TabId = 'config' | 'sources'
@@ -108,8 +108,8 @@ async function jsonRequest<T>(path: string, method = 'GET', payload?: unknown): 
 
 const chevron: CSSProperties = { width: 16, height: 16, display: 'block' }
 
-export function EverythingSettings({ t }: Partial<SettingsInjected>) {
-  if (t === undefined) throw new Error('Everything OAuth settings requires t')
+export function DshAuthEveryingSettings({ t }: Partial<SettingsInjected>) {
+  if (t === undefined) throw new Error('dsh-auth-everying settings requires t')
   ensureCss()
   const tabsId = useId()
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([])

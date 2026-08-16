@@ -31,6 +31,8 @@ interface DiscoveredSource {
   baseHost?: string;
   model?: string;
   models?: string[];
+  /** Configured default effort for the source's selected model. */
+  modelReasoningEffort?: string;
   api?: WireApi;
   envKey?: string;
 }
@@ -52,6 +54,10 @@ interface StoredRoute {
   models: string[];
   /** Models the user turned on for the composer picker. */
   enabled: string[];
+  /** CC Switch's explicitly configured model, when one is available. */
+  configuredModel?: string;
+  /** CC Switch's configured reasoning effort for configuredModel. */
+  modelReasoningEffort?: string;
   sourceId: string;
   origin: string;
 }
@@ -60,8 +66,8 @@ interface StoreDocument {
   credentials: Record<string, Credential>;
   routes: Record<string, StoredRoute>;
 }
-declare function everythingOAuthPath(dshHome?: string): string;
-declare class EverythingOAuthStore implements CredentialStore {
+declare function authEveryingPath(dshHome?: string): string;
+declare class DshAuthEveryingStore implements CredentialStore {
   readonly filename: string;
   constructor(filename?: string);
   private readDocument;
@@ -89,11 +95,11 @@ interface PlatformStatus {
   available: string[];
   enabled: string[];
 }
-declare class EverythingOAuthSession {
-  readonly store: EverythingOAuthStore;
+declare class DshAuthEveryingSession {
+  readonly store: DshAuthEveryingStore;
   readonly models: MutableModels;
   private onChange;
-  constructor(store?: EverythingOAuthStore, onChange?: () => void);
+  constructor(store?: DshAuthEveryingStore, onChange?: () => void);
   discover(): Promise<DiscoveredSource[]>;
   importOne(id: string): Promise<DiscoveredSource>;
   importMany(ids: readonly string[]): Promise<DiscoveredSource[]>;
@@ -107,19 +113,24 @@ declare class EverythingOAuthSession {
       imported: boolean;
     }>;
   }>;
+  /**
+   * Earlier versions missed CC Switch model and reasoning metadata. Refresh only
+   * stale routes so existing imports recover without replacing user choices.
+   */
+  private refreshStaleCcSwitchRoutes;
   logout(id?: string): Promise<void>;
   resolveAccess(route: string): Promise<string>;
   profiles(): Promise<Map<string, ResolvedPiAiProviderProfile>>;
 }
 //#endregion
 //#region src/auth.d.ts
-declare function loginOfficial(id: OfficialPlatformId, interaction: AuthInteraction, store?: EverythingOAuthStore): Promise<void>;
+declare function loginOfficial(id: OfficialPlatformId, interaction: AuthInteraction, store?: DshAuthEveryingStore): Promise<void>;
 //#endregion
 //#region src/index.d.ts
-declare const name = "llm-everything-oauth";
+declare const name = "llm-dsh-auth-everying";
 declare const inject: string[];
 interface Config {}
 declare const Config: z<Config>;
 declare function apply(ctx: Context, _config: Config): void;
 //#endregion
-export { Config, EverythingOAuthSession, EverythingOAuthStore, OFFICIAL_PLATFORMS, apply, discoverSources, everythingOAuthPath, inject, loginOfficial, name, publicSource };
+export { Config, DshAuthEveryingSession, DshAuthEveryingStore, OFFICIAL_PLATFORMS, apply, authEveryingPath, discoverSources, inject, loginOfficial, name, publicSource };

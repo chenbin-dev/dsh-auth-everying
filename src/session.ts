@@ -19,7 +19,7 @@ import {
   publicSource,
   routeForDiscovered,
 } from './discover.ts'
-import { EverythingOAuthStore, type StoredRoute, everythingOAuthPath } from './store.ts'
+import { DshAuthEveryingStore, type StoredRoute, authEveryingPath } from './store.ts'
 import { catalogModelIds, catalogProvider, customProvider, officialRuntimeProvider } from './providers.ts'
 
 export interface PlatformStatus {
@@ -35,12 +35,12 @@ export interface PlatformStatus {
   enabled: string[]
 }
 
-export class EverythingOAuthSession {
-  readonly store: EverythingOAuthStore
+export class DshAuthEveryingSession {
+  readonly store: DshAuthEveryingStore
   readonly models: MutableModels
   private onChange: (() => void) | undefined
 
-  constructor(store: EverythingOAuthStore = new EverythingOAuthStore(), onChange?: () => void) {
+  constructor(store: DshAuthEveryingStore = new DshAuthEveryingStore(), onChange?: () => void) {
     this.store = store
     this.onChange = onChange
     this.models = createModels({ credentials: store })
@@ -107,6 +107,25 @@ export class EverythingOAuthSession {
         }
       }
     }
+    if (item.origin === 'CC Switch' && item.platform === 'codex' && item.baseURL !== undefined) {
+      const token = item.credential.type === 'oauth' ? item.credential.access : item.credential.key
+      if (token !== undefined) {
+        try {
+          const { fetchLiveModelIds, modelListingUrls } = await import('./live-models.ts')
+          for (const url of modelListingUrls(item.baseURL)) {
+            try {
+              const live = await fetchLiveModelIds(url, token)
+              available = [...new Set([...available, ...live])]
+              break
+            } catch {
+              // A few compatible gateways expose /models instead of /v1/models.
+            }
+          }
+        } catch {
+          // The declared CC Switch model remains usable when discovery is unavailable.
+        }
+      }
+    }
     const enabled = existing?.enabled.length
       ? existing.enabled
       : this.defaultEnabled(item, available, official?.defaultModel)
@@ -117,6 +136,8 @@ export class EverythingOAuthSession {
       api: item.api ?? 'openai-completions',
       models: available,
       enabled,
+      ...item.model === undefined ? {} : { configuredModel: item.model },
+      ...item.modelReasoningEffort === undefined ? {} : { modelReasoningEffort: item.modelReasoningEffort },
       sourceId: item.id,
       origin: item.origin,
       ...item.baseURL === undefined ? {} : { baseURL: item.baseURL },
@@ -134,6 +155,7 @@ export class EverythingOAuthSession {
   }
 
   async status(): Promise<{ platforms: PlatformStatus[]; discovered: Array<DiscoveredSource & { imported: boolean }> }> {
+    await this.refreshStaleCcSwitchRoutes()
     const document = await this.store.snapshot()
     const importedSources = new Set(Object.values(document.routes).map(route => route.sourceId))
     const discovered = (await this.discover()).map(item => ({ ...item, imported: importedSources.has(item.id) }))
@@ -161,6 +183,25 @@ export class EverythingOAuthSession {
     return { platforms, discovered }
   }
 
+  /**
+   * Earlier versions missed CC Switch model and reasoning metadata. Refresh only
+   * stale routes so existing imports recover without replacing user choices.
+   */
+  private async refreshStaleCcSwitchRoutes(): Promise<void> {
+    const document = await this.store.snapshot()
+    const sources = new Map((await discoverSources()).filter(isImportable).map(item => [item.id, item]))
+    for (const route of Object.values(document.routes)) {
+      if (route.origin !== 'CC Switch') continue
+      const item = sources.get(route.sourceId)
+      if (item === undefined || item.baseURL === undefined || item.platform !== 'codex') continue
+      const missingModels = route.models.length === 0
+      const staleReasoning = item.modelReasoningEffort !== undefined
+        && (route.configuredModel !== item.model || route.modelReasoningEffort !== item.modelReasoningEffort)
+      if (!missingModels && !staleReasoning) continue
+      await this.persist(item)
+    }
+  }
+
   async logout(id?: string): Promise<void> {
     if (id === undefined || id === 'all') {
       await this.store.clearAll()
@@ -184,7 +225,7 @@ export class EverythingOAuthSession {
     if (credential?.type === 'api_key' && credential.key !== undefined) return credential.key
     if (credential?.type === 'oauth') return credential.access
     throw new LlmError(
-      `${official?.displayName ?? route} is not imported. Open Settings → Everything OAuth and import a local login.`,
+      `${official?.displayName ?? route} is not imported. Open Settings → dsh-auth-everying and import a local login.`,
       'MISSING_CREDENTIAL',
     )
   }
@@ -192,7 +233,7 @@ export class EverythingOAuthSession {
   async profiles(): Promise<Map<string, ResolvedPiAiProviderProfile>> {
     const document = await this.store.snapshot()
     const profiles = new Map<string, ResolvedPiAiProviderProfile>()
-    const retryPolicy = resolveRetryPolicy(undefined, 'dsh-everything-oauth retryPolicy')
+    const retryPolicy = resolveRetryPolicy(undefined, 'dsh-auth-everying retryPolicy')
     const add = (route: string, displayName: string, provider: Provider): void => {
       profiles.set(route, {
         provider: route,
@@ -217,8 +258,8 @@ export class EverythingOAuthSession {
   }
 }
 
-export function createEverythingAdapterSync(
-  session: EverythingOAuthSession,
+export function createDshAuthEveryingAdapterSync(
+  session: DshAuthEveryingSession,
   resolveAttachments: () => AttachmentStore | undefined,
   cache: { current: Map<string, ResolvedPiAiProviderProfile> },
 ): PiAiAdapter {
@@ -229,4 +270,4 @@ export function createEverythingAdapterSync(
   })
 }
 
-export { everythingOAuthPath }
+export { authEveryingPath }

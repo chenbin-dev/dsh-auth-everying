@@ -1,8 +1,8 @@
 /** Harness-home document owned by this bundle. */
-export const STORE_FILENAME = '.everything-oauth.json'
+export const STORE_FILENAME = '.auth-everying.json'
 
 /** Web route prefix. */
-export const PLUGIN_PATH = '/plugins/dsh-everything-oauth'
+export const PLUGIN_PATH = '/plugins/dsh-auth-everying'
 
 export const AUTH_STATUS_PATH = `${PLUGIN_PATH}/auth/status`
 export const AUTH_IMPORT_PATH = `${PLUGIN_PATH}/auth/import`
