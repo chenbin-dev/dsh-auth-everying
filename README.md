@@ -16,7 +16,15 @@
 - A web profile, because the settings panel is provided by the DSH web interface.
 - Node.js 22.19 or later only when building the project from source.
 
-## Install From GitHub
+## Install
+
+After the package is published to npm, the shortest installation command is:
+
+```sh
+dsh plugin --profile web add dsh-auth-everying
+```
+
+Until the first npm release is published, install directly from the public GitHub repository:
 
 Run these commands in PowerShell or a terminal:
 
@@ -24,6 +32,8 @@ Run these commands in PowerShell or a terminal:
 dsh plugin --profile web add github:chenbin-dev/dsh-auth-everying
 dsh web
 ```
+
+The package name and the GitHub repository are different distribution channels. Publishing the repository does not by itself publish the npm package.
 
 If DSH is already running, restart `dsh web` after installing or updating the plugin so the new bundle is loaded.
 

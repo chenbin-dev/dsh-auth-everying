@@ -16,7 +16,15 @@
 - 使用 `web` profile，因为插件设置页面由 DSH Web 界面提供。
 - 只有从源码构建时才需要 Node.js 22.19 或更高版本。
 
-## 从 GitHub 安装
+## 安装
+
+npm 包发布后，普通用户可以直接使用包名安装：
+
+```sh
+dsh plugin --profile web add dsh-auth-everying
+```
+
+在首次 npm 版本发布之前，请直接从公开 GitHub 仓库安装：
 
 在 PowerShell 或终端执行：
 
@@ -24,6 +32,8 @@
 dsh plugin --profile web add github:chenbin-dev/dsh-auth-everying
 dsh web
 ```
+
+包名安装和 GitHub 仓库安装是两种不同的分发方式。仅将项目开源到 GitHub，并不会自动发布 npm 包。
 
 如果 DSH 已经在运行，安装或更新插件后请重启 `dsh web`，确保加载新的插件构建产物。
 
