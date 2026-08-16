@@ -84,8 +84,8 @@ describe('CC Switch Codex custom provider', () => {
   })
 })
 
-describe('CC Switch configured reasoning', () => {
-  it('restricts the configured model to its declared effort', () => {
+describe('CC Switch Codex reasoning', () => {
+  it('exposes the complete Codex effort selector for the configured model', () => {
     const model = customProvider({
       route: 'everything-team',
       displayName: 'team',
@@ -101,11 +101,18 @@ describe('CC Switch configured reasoning', () => {
     }).getModels()[0]
     expect(model).toMatchObject({
       reasoning: true,
-      thinkingLevelMap: { low: null, medium: null, high: 'high', xhigh: null, max: null },
+      thinkingLevelMap: {
+        minimal: 'minimal',
+        low: 'low',
+        medium: 'medium',
+        high: 'high',
+        xhigh: 'xhigh',
+        max: 'max',
+      },
     })
   })
 
-  it('uses DSH xhigh for Codex ultra while preserving the gateway value', () => {
+  it('exposes xhigh and max as ultra when the gateway uses the ultra alias', () => {
     const model = customProvider({
       route: 'everything-team',
       displayName: 'team',
@@ -119,7 +126,27 @@ describe('CC Switch configured reasoning', () => {
       sourceId: 'ccswitch:codex:provider-id',
       origin: 'CC Switch',
     }).getModels()[0]
-    expect(model?.thinkingLevelMap).toMatchObject({ high: null, xhigh: 'ultra', max: null })
+    expect(model?.thinkingLevelMap).toMatchObject({ high: 'high', xhigh: 'ultra', max: 'ultra' })
+  })
+
+  it('exposes extended levels for discovered models too', () => {
+    const models = customProvider({
+      route: 'everything-team',
+      displayName: 'team',
+      piProvider: 'everything-team',
+      api: 'openai-responses',
+      baseURL: 'https://gateway.example',
+      models: ['gpt-5.6-terra', 'gpt-5.6-sol'],
+      enabled: ['gpt-5.6-terra', 'gpt-5.6-sol'],
+      configuredModel: 'gpt-5.6-terra',
+      modelReasoningEffort: 'high',
+      sourceId: 'ccswitch:codex:provider-id',
+      origin: 'CC Switch',
+    }).getModels()
+    expect(models[1]).toMatchObject({
+      id: 'gpt-5.6-sol',
+      thinkingLevelMap: { xhigh: 'xhigh', max: 'max' },
+    })
   })
 })
 

@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file.
 
 Package name: `dsh-auth-everying`.
 
+## 0.1.3 - 2026-08-16
+
+### Fixed
+
+- Expose `minimal`, `low`, `medium`, `high`, `xhigh`, and `max` for every model on a CC Switch Codex route.
+- Preserve the `ultra` gateway alias for the highest Codex effort levels.
+- Keep discovered models such as `gpt-5.6-sol` from inheriting the configured model's single effort restriction.
+
 ## 0.1.2 - 2026-08-16
 
 ### Fixed

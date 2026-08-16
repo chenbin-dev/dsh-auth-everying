@@ -7,7 +7,8 @@
 - 导入本地 Claude、Codex、Grok、Gemini、Copilot、OpenCode 和 CC Switch 配置。
 - 为兼容的官方供应商提供 OAuth 登录。
 - 通过 `/v1/models` 或 `/models` 从 OpenAI 兼容的 CC Switch 网关发现模型。
-- 保留 Codex 配置中的 `model_reasoning_effort`。Codex 的 `ultra` 在 DSH 中显示为 `xhigh`，发送给网关时仍使用 `ultra`。
+- CC Switch Codex 路由中的每个模型都提供 `minimal`、`low`、`medium`、`high`、`xhigh` 和 `max` 推理等级。
+- 保留 Codex 配置中的 `model_reasoning_effort`。Codex 的 `ultra` 在 DSH 中显示为 `xhigh`；当网关使用 `ultra` 方言时，仍会发送 `ultra`。
 - 支持 Windows 环境下的安装和构建。
 
 ## 使用条件
@@ -75,7 +76,7 @@ dsh plugin --profile web exec dsh-auth-everying import live:codex-auth live:grok
 
 ### 推理等级与供应商不一致
 
-对于已配置的 Codex 模型，插件使用 `model_reasoning_effort` 中的值，只展示该模型声明的等级。Codex `ultra` 在 DSH 中显示为 `xhigh`，发给网关的请求仍为 `ultra`。
+对于 CC Switch Codex 路由，每个模型都会显示 `minimal`、`low`、`medium`、`high`、`xhigh` 和 `max`。`model_reasoning_effort` 会作为供应商元数据保留，不再错误地把选择器限制为单个等级。当网关使用 Codex 的 `ultra` 方言时，DSH 的 `xhigh` 和 `max` 会发送为 `ultra`。
 
 ### Windows 安装或启动失败
 

@@ -7,7 +7,8 @@
 - Imports local Claude, Codex, Grok, Gemini, Copilot, OpenCode, and CC Switch configuration.
 - Supports OAuth login for compatible official providers.
 - Discovers models from OpenAI-compatible CC Switch gateways through `/v1/models` or `/models`.
-- Preserves the configured Codex `model_reasoning_effort`. DSH displays Codex `ultra` as `xhigh` while sending `ultra` to the gateway.
+- Exposes Codex `minimal`, `low`, `medium`, `high`, `xhigh`, and `max` levels for every model on a CC Switch Codex route.
+- Preserves the configured Codex `model_reasoning_effort`. DSH displays Codex `ultra` as `xhigh` and keeps the `ultra` gateway alias when that dialect is configured.
 - Supports Windows installation and build workflows.
 
 ## Requirements
@@ -75,7 +76,7 @@ Open the plugin settings and run the source scan again. For a CC Switch OpenAI-c
 
 ### The reasoning levels do not match the provider
 
-For a configured Codex model, the plugin uses the value in `model_reasoning_effort`. Only the declared level is exposed. Codex `ultra` is represented as DSH `xhigh` and remains `ultra` in the gateway request.
+For CC Switch Codex routes, every model exposes `minimal`, `low`, `medium`, `high`, `xhigh`, and `max`. The configured `model_reasoning_effort` is retained as provider metadata rather than incorrectly limiting the selector to one level. When the gateway uses the Codex `ultra` dialect, DSH `xhigh` and `max` are sent as `ultra`.
 
 ### Windows installation or startup fails
 

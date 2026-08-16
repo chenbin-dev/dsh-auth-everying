@@ -21,6 +21,10 @@ const ZERO_COST = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }
 const THINKING_LEVELS = ['minimal', 'low', 'medium', 'high', 'xhigh', 'max'] as const
 type ThinkingLevel = typeof THINKING_LEVELS[number]
 
+function isCcSwitchCodex(route: StoredRoute): boolean {
+  return route.sourceId.startsWith('ccswitch:codex:')
+}
+
 function bearerOf(credential: { type?: string; key?: string; access?: string } | undefined): string | undefined {
   if (credential === undefined) return undefined
   if (typeof credential.access === 'string' && credential.access.length > 0) return credential.access
@@ -71,6 +75,25 @@ export function catalogProvider(id: OfficialPlatformId): Provider | undefined {
 
 /** Mirror CC Switch's configured effort for its selected model without guessing other models' capabilities. */
 function configuredReasoning(route: StoredRoute, id: string): Pick<Model<WireApi>, 'reasoning' | 'thinkingLevelMap'> {
+  // pi-ai treats xhigh and max as unsupported unless every wire value is
+  // declared explicitly. CC Switch Codex routes expose the full Codex
+  // selector, while an `ultra` setting remains a gateway-specific alias.
+  if (isCcSwitchCodex(route)) {
+    const configured = route.modelReasoningEffort?.trim().toLowerCase()
+    const highestWire = configured === 'ultra' ? 'ultra' : undefined
+    return {
+      reasoning: true,
+      thinkingLevelMap: {
+        off: null,
+        minimal: 'minimal',
+        low: 'low',
+        medium: 'medium',
+        high: 'high',
+        xhigh: highestWire ?? 'xhigh',
+        max: highestWire ?? 'max',
+      },
+    }
+  }
   if (route.configuredModel !== id || route.modelReasoningEffort === undefined) return { reasoning: true }
   const effort = route.modelReasoningEffort.trim().toLowerCase()
   if (effort === 'off' || effort === 'none' || effort === 'disabled') return { reasoning: false }
