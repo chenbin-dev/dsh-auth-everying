@@ -20,7 +20,8 @@ import {
   routeForDiscovered,
 } from './discover.ts'
 import { DshAuthEveryingStore, type StoredRoute, authEveryingPath } from './store.ts'
-import { catalogModelIds, catalogProvider, customProvider, officialRuntimeProvider } from './providers.ts'
+import { catalogModelIds, catalogProvider, customProvider, officialRuntimeProvider, supportsUltra } from './providers.ts'
+import { CodexReasoningAdapter } from './reasoning-adapter.ts'
 
 export interface PlatformStatus {
   id: string
@@ -230,7 +231,7 @@ export class DshAuthEveryingSession {
     )
   }
 
-  async profiles(): Promise<Map<string, ResolvedPiAiProviderProfile>> {
+  async profiles(codexReasoningWire: 'standard' | 'ultra' = 'standard'): Promise<Map<string, ResolvedPiAiProviderProfile>> {
     const document = await this.store.snapshot()
     const profiles = new Map<string, ResolvedPiAiProviderProfile>()
     const retryPolicy = resolveRetryPolicy(undefined, 'dsh-auth-everying retryPolicy')
@@ -252,22 +253,37 @@ export class DshAuthEveryingSession {
         if (runtime !== undefined) add(route.route, route.displayName, runtime)
         continue
       }
-      add(route.route, route.displayName, customProvider(route))
+      add(route.route, route.displayName, customProvider(route, codexReasoningWire))
     }
     return profiles
+  }
+
+  /** Return imported CC Switch Codex routes that expose the Codex `ultra` selector. */
+  async ultraRoutes(): Promise<ReadonlySet<string>> {
+    const document = await this.store.snapshot()
+    return new Set(Object.values(document.routes).filter(supportsUltra).map(route => route.route))
   }
 }
 
 export function createDshAuthEveryingAdapterSync(
   session: DshAuthEveryingSession,
   resolveAttachments: () => AttachmentStore | undefined,
-  cache: { current: Map<string, ResolvedPiAiProviderProfile> },
-): PiAiAdapter {
-  return new PiAiAdapter({
-    profiles: () => cache.current,
-    resolveApiKey: async (provider) => session.resolveAccess(provider),
+  cache: {
+    current: Map<string, ResolvedPiAiProviderProfile>
+    ultra: Map<string, ResolvedPiAiProviderProfile>
+    ultraRoutes: ReadonlySet<string>
+  },
+): CodexReasoningAdapter {
+  const common = {
+    resolveApiKey: async (provider: string) => session.resolveAccess(provider),
     resolveAttachments,
+  }
+  const standard = new PiAiAdapter({
+    profiles: () => cache.current,
+    ...common,
   })
+  const ultra = new PiAiAdapter({ profiles: () => cache.ultra, ...common })
+  return new CodexReasoningAdapter(standard, ultra, cache.ultraRoutes)
 }
 
 export { authEveryingPath }

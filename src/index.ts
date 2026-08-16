@@ -20,12 +20,18 @@ export interface Config {}
 export const Config: z<Config> = z.object({})
 
 export function apply(ctx: Context, _config: Config): void {
-  const cache = { current: new Map() }
+  const cache: Parameters<typeof createDshAuthEveryingAdapterSync>[2] = {
+    current: new Map(),
+    ultra: new Map(),
+    ultraRoutes: new Set<string>(),
+  }
   let session!: DshAuthEveryingSession
   let adapter!: ReturnType<typeof createDshAuthEveryingAdapterSync>
   let handle: AdapterRegistrationHandle | undefined
   const reconcile = async (): Promise<void> => {
     cache.current = await session.profiles()
+    cache.ultra = await session.profiles('ultra')
+    cache.ultraRoutes = await session.ultraRoutes()
     const routes = [...cache.current.keys()]
     if (handle === undefined && routes.length > 0) {
       handle = ctx.llm.registerAdapter(routes, adapter)

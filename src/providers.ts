@@ -73,14 +73,23 @@ export function catalogProvider(id: OfficialPlatformId): Provider | undefined {
   }
 }
 
-/** Mirror CC Switch's configured effort for its selected model without guessing other models' capabilities. */
-function configuredReasoning(route: StoredRoute, id: string): Pick<Model<WireApi>, 'reasoning' | 'thinkingLevelMap'> {
+export type CodexReasoningWire = 'standard' | 'ultra'
+
+/** Treat an imported CC Switch Codex route as the route that owns the Codex effort dialect. */
+export function supportsUltra(route: StoredRoute): boolean {
+  return isCcSwitchCodex(route)
+}
+
+/** Mirror CC Switch's configured effort without changing the wire spelling of other levels. */
+function configuredReasoning(
+  route: StoredRoute,
+  id: string,
+  codexReasoningWire: CodexReasoningWire,
+): Pick<Model<WireApi>, 'reasoning' | 'thinkingLevelMap'> {
   // pi-ai treats xhigh and max as unsupported unless every wire value is
-  // declared explicitly. CC Switch Codex routes expose the full Codex
-  // selector, while an `ultra` setting remains a gateway-specific alias.
+  // declared explicitly. The standard route keeps each Codex value exact;
+  // the ultra route is used only when the caller explicitly selects `ultra`.
   if (isCcSwitchCodex(route)) {
-    const configured = route.modelReasoningEffort?.trim().toLowerCase()
-    const highestWire = configured === 'ultra' ? 'ultra' : undefined
     return {
       reasoning: true,
       thinkingLevelMap: {
@@ -89,8 +98,8 @@ function configuredReasoning(route: StoredRoute, id: string): Pick<Model<WireApi
         low: 'low',
         medium: 'medium',
         high: 'high',
-        xhigh: highestWire ?? 'xhigh',
-        max: highestWire ?? 'max',
+        xhigh: codexReasoningWire === 'ultra' ? 'ultra' : 'xhigh',
+        max: 'max',
       },
     }
   }
@@ -108,14 +117,14 @@ function configuredReasoning(route: StoredRoute, id: string): Pick<Model<WireApi
   return { reasoning: true, thinkingLevelMap }
 }
 
-function materializeModel(route: StoredRoute, id: string): Model<WireApi> {
+function materializeModel(route: StoredRoute, id: string, codexReasoningWire: CodexReasoningWire): Model<WireApi> {
   return {
     id,
     name: id,
     api: route.api,
     provider: route.route,
     baseUrl: route.baseURL ?? 'https://example.invalid/v1',
-    ...configuredReasoning(route, id),
+    ...configuredReasoning(route, id, codexReasoningWire),
     input: ['text', 'image'],
     cost: ZERO_COST,
     contextWindow: DEFAULT_CONTEXT_WINDOW,
@@ -127,9 +136,9 @@ export function visibleModelIds(route: StoredRoute): string[] {
   return route.enabled.filter(id => id.length > 0)
 }
 
-export function customProvider(route: StoredRoute): Provider {
+export function customProvider(route: StoredRoute, codexReasoningWire: CodexReasoningWire = 'standard'): Provider {
   const ids = visibleModelIds(route)
-  const models = (ids.length > 0 ? ids : []).map(id => materializeModel(route, id))
+  const models = (ids.length > 0 ? ids : []).map(id => materializeModel(route, id, codexReasoningWire))
   const api = route.api === 'anthropic-messages'
     ? anthropicMessagesApi()
     : route.api === 'openai-responses' || route.api === 'openai-codex-responses'

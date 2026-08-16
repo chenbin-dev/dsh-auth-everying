@@ -1,5 +1,6 @@
 import z from "@deepseek-ai/schemastery";
 import { AuthInteraction, Credential, CredentialInfo, CredentialStore, MutableModels } from "@earendil-works/pi-ai";
+import { LlmAdapter } from "@deepseek-ai/dsh-llm";
 import { PiAiAdapter, ResolvedPiAiProviderProfile } from "@deepseek-ai/dsh-llm-pi-ai";
 import { Context } from "@deepseek-ai/cordis";
 import "@deepseek-ai/dsh-attachment";
@@ -120,7 +121,9 @@ declare class DshAuthEveryingSession {
   private refreshStaleCcSwitchRoutes;
   logout(id?: string): Promise<void>;
   resolveAccess(route: string): Promise<string>;
-  profiles(): Promise<Map<string, ResolvedPiAiProviderProfile>>;
+  profiles(codexReasoningWire?: 'standard' | 'ultra'): Promise<Map<string, ResolvedPiAiProviderProfile>>;
+  /** Return imported CC Switch Codex routes that expose the Codex `ultra` selector. */
+  ultraRoutes(): Promise<ReadonlySet<string>>;
 }
 //#endregion
 //#region src/auth.d.ts

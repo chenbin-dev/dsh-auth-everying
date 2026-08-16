@@ -2,10 +2,14 @@ import { mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { ReasoningEffortId, type GenerateOptions } from '@deepseek-ai/dsh-llm'
+import type { PiAiAdapter } from '@deepseek-ai/dsh-llm-pi-ai'
 import { bestSecret } from '../src/parse-oauth.ts'
 import { fromCcSwitchConfig, isImportable, routeForDiscovered } from '../src/discover.ts'
 
-import { catalogModelIds, customProvider } from '../src/providers.ts'
+import { catalogModelIds, customProvider, supportsUltra } from '../src/providers.ts'
+import { CodexReasoningAdapter } from '../src/reasoning-adapter.ts'
+import type { StoredRoute } from '../src/store.ts'
 import { extractModelIds, modelListingUrls } from '../src/live-models.ts'
 
 describe('grok catalog extras', () => {
@@ -112,8 +116,8 @@ describe('CC Switch Codex reasoning', () => {
     })
   })
 
-  it('exposes xhigh and max as ultra when the gateway uses the ultra alias', () => {
-    const model = customProvider({
+  it('keeps xhigh and max exact while exposing a separate ultra route', () => {
+    const route: StoredRoute = {
       route: 'everything-team',
       displayName: 'team',
       piProvider: 'everything-team',
@@ -122,11 +126,15 @@ describe('CC Switch Codex reasoning', () => {
       models: ['gpt-5.6-terra'],
       enabled: ['gpt-5.6-terra'],
       configuredModel: 'gpt-5.6-terra',
-      modelReasoningEffort: 'ultra',
+      modelReasoningEffort: 'high',
       sourceId: 'ccswitch:codex:provider-id',
       origin: 'CC Switch',
-    }).getModels()[0]
-    expect(model?.thinkingLevelMap).toMatchObject({ high: 'high', xhigh: 'ultra', max: 'ultra' })
+    }
+    const standard = customProvider(route).getModels()[0]
+    const ultra = customProvider(route, 'ultra').getModels()[0]
+    expect(supportsUltra(route)).toBe(true)
+    expect(standard?.thinkingLevelMap).toMatchObject({ high: 'high', xhigh: 'xhigh', max: 'max' })
+    expect(ultra?.thinkingLevelMap).toMatchObject({ high: 'high', xhigh: 'ultra', max: 'max' })
   })
 
   it('exposes extended levels for discovered models too', () => {
@@ -147,6 +155,46 @@ describe('CC Switch Codex reasoning', () => {
       id: 'gpt-5.6-sol',
       thinkingLevelMap: { xhigh: 'xhigh', max: 'max' },
     })
+  })
+
+  it('adds ultra without rewriting the standard xhigh request', async () => {
+    const selected: Array<{ path: 'standard' | 'ultra'; effort?: string }> = []
+    const resolved = {
+      provider: 'everything-team',
+      id: 'gpt-5.6-terra',
+      name: 'gpt-5.6-terra',
+      inputModalities: ['text'] as const,
+      reasoning: { efforts: [{ id: ReasoningEffortId('high'), name: 'High' }] },
+    }
+    const makeAdapter = (path: 'standard' | 'ultra'): PiAiAdapter => ({
+      resolveModel: async () => resolved,
+      stream: (options: GenerateOptions) => {
+        selected.push({ path, effort: options.reasoningEffort })
+        return (async function* () {})()
+      },
+    } as unknown as PiAiAdapter)
+    const adapter = new CodexReasoningAdapter(makeAdapter('standard'), makeAdapter('ultra'), new Set(['everything-team']))
+
+    const model = await adapter.resolveModel('everything-team', 'gpt-5.6-terra')
+    expect(model.reasoning?.efforts.map(effort => effort.id)).toEqual(['high', 'ultra'])
+
+    adapter.stream({
+      provider: 'everything-team',
+      model: 'gpt-5.6-terra',
+      messages: [],
+      reasoningEffort: ReasoningEffortId('xhigh'),
+    })
+    adapter.stream({
+      provider: 'everything-team',
+      model: 'gpt-5.6-terra',
+      messages: [],
+      reasoningEffort: ReasoningEffortId('ultra'),
+    })
+
+    expect(selected).toEqual([
+      { path: 'standard', effort: 'xhigh' },
+      { path: 'ultra', effort: 'xhigh' },
+    ])
   })
 })
 
