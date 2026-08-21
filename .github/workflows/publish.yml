@@ -18,6 +18,18 @@ jobs:
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org/
+
+      # 硬校验：tag 必须与 package.json 版本号一致，否则拒绝发布
+      - name: 校验 tag 与版本号
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          VER="$(node -p "require('./package.json').version")"
+          if [ "$TAG" != "$VER" ]; then
+            echo "::error::tag=$TAG 与 package.json version=$VER 不一致，拒绝发布"
+            exit 1
+          fi
+          echo "✓ tag=$TAG version=$VER 一致"
+
       - run: npm ci
       - run: npm run check
       - run: npm publish --provenance --access public
