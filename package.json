@@ -1,7 +1,7 @@
 {
   "name": "dsh-auth-everying",
   "description": "Import local Codex / Grok / Claude / Copilot / Gemini login state into DeepSeek Harness",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "license": "Apache-2.0",
   "keywords": [
     "dsh-plugin",
@@ -40,36 +40,17 @@
     "check": "npm run typecheck && npm run test && npm run build"
   },
   "exports": {
-    ".": {
-      "types": "./lib/index.d.ts",
-      "default": "./lib/index.js"
-    },
-    "./invariant": {
-      "types": "./lib/invariant.d.ts",
-      "default": "./lib/invariant.js"
-    },
+    ".": { "types": "./lib/index.d.ts", "default": "./lib/index.js" },
+    "./invariant": { "types": "./lib/invariant.d.ts", "default": "./lib/invariant.js" },
     "./client": "./lib/client.js",
     "./cordis.patch.yml": "./cordis.patch.yml",
     "./package.json": "./package.json"
   },
-  "files": [
-    "lib",
-    "src",
-    "cordis.patch.yml",
-    "README.md",
-    "README.zh.md",
-    "LICENSE"
-  ],
+  "files": ["lib", "src", "cordis.patch.yml", "README.md", "README.zh.md", "LICENSE"],
   "dsh": {
-    "bundle": {
-      "patch": "./cordis.patch.yml"
-    },
+    "bundle": { "patch": "./cordis.patch.yml" },
     "client": {
-      "inject": [
-        "@deepseek-ai/dsh-client-runtime",
-        "@deepseek-ai/dsh-client-ui-settings",
-        "@deepseek-ai/dsh-client-locale"
-      ],
+      "inject": ["@deepseek-ai/dsh-client-runtime", "@deepseek-ai/dsh-client-ui-settings", "@deepseek-ai/dsh-client-locale"],
       "platform": "web"
     }
   },
